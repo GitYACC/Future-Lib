@@ -1,0 +1,2 @@
+hikari-lightbulb==2.2.4
+Pillow>=9.0
