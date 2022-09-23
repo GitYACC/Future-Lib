@@ -1,7 +1,10 @@
 import lightbulb
 import hikari
 from dataclasses import dataclass
-from future.discord import BaseEmbed
+from future.discord import \
+    BaseEmbed,             \
+    BaseComponent,         \
+    ComponentType
 
 
 @dataclass
@@ -30,9 +33,20 @@ bot = lightbulb.BotApp(
 @lightbulb.command("embed", "test embed")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def test_command(ctx: lightbulb.Context):
-    embed = BaseEmbed().save()
-
-    await ctx.respond(attachment=embed)
+    component_flags = {
+        "position": (10, 10),
+        "text": "Hello World"
+    }
+    embed = BaseEmbed()
+    embed.add_component(
+        BaseComponent(
+            name="row0col0", 
+            type=ComponentType.TEXT, 
+            **component_flags
+        )
+    )
+    
+    await ctx.respond(attachment=embed.save(name="test", fp="../env"))
 
 
 

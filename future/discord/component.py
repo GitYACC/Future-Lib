@@ -17,6 +17,7 @@ class BaseComponent:
         self.pos: tuple = attrs.get("position")
         self.focus: bool = attrs.get("focus")
 
+        # Partial Flags (excludes Text)
         self.bradius: int = (
             attrs.get("bradius") or
             attrs.get("border-radius")

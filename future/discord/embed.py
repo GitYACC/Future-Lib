@@ -3,11 +3,9 @@ from enum import Enum
 from queue import Queue
 import hikari
 import lightbulb
+import typing
 from PIL import Image, ImageFont, ImageDraw
-from rich.console import Console
-from .component import BaseComponent
-
-console = Console()
+from .component import BaseComponent, ComponentType
 
 @dataclass
 class EmbedConfig:
@@ -23,15 +21,12 @@ class EmbedSize(Enum):
 
 
 class BaseEmbed:
-    def __init__(self, size: EmbedSize = EmbedSize.NORMAL, font: str = "../fonts/Typomoderno.ttf", font_pixel_size: int = 12):
-        with console.status("[green italic]Embedding..."):
-           self._init_(size, font, font_pixel_size)
-
-    def _init_(self, size: EmbedSize, font: str, font_pixel_size: int):
-        self.dim = (1000, size)
+    def __init__(self, size: EmbedSize = EmbedSize.NORMAL, font: typing.TextIO = "../fonts/Andale Mono.ttf", font_pixel_size: int = 12):
+        self.dim = (1000, size.value)
         self.root = Image.new("RGB", self.dim, color=EmbedConfig.base_color)
-        self.instructions = Queue(maxsize=-1)
+        self.instructions: typing.List[BaseComponent] = Queue(maxsize=-1)
         self.font = ImageFont.truetype(font, font_pixel_size)
+        self.children = {}
         self.initialize_root()
 
     def initialize_root(self):
@@ -56,12 +51,20 @@ class BaseEmbed:
         return self
 
     def _process_commands(self):
+        renderer = ImageDraw.Draw(self.root)
         while command := self.instructions.get():
-            pass
+            if command.type == ComponentType.TEXT:
+                self.children[command.name] = command
+                renderer.multiline_textbbox(command.pos, command.text, font=self.font)
+                break
+        
+
     
-    def save(self) -> str:
-        self.root.save("test.png")
-        return "../env/test.png"
+    def save(self, name: str, fp: typing.TextIO) -> str:
+        self._process_commands()
+        fname = name + (".png" if not name.endswith(".png") else "")
+        self.root.save(fname)
+        return f"{fp}/{fname}"
         
 
 
