@@ -1,8 +1,9 @@
 import lightbulb
 import hikari
 from dataclasses import dataclass
-from future.discord.embed import BaseEmbed
-from base64 import urlsafe_b64decode
+#from base64 import urlsafe_b64decode
+from future.discord import BaseEmbed
+
 
 @dataclass
 class TestServer:
@@ -11,10 +12,10 @@ class TestServer:
 
 
 bot = lightbulb.BotApp(
-    intents=hikari.Intents.ALL,
-    token=urlsafe_b64decode(
-        TestServer.client_secret
-    ),
+    #intents=hikari.Intents.ALL,
+    token="NzI0MDAzMjU1NDIzODYwNzY5.GNUur1.K3UnRPa4kZsMMag9iS2RJqtNkaplp29wdqNhS4",#urlsafe_b64decode(
+    #    TestServer.client_secret
+    #),
     default_enabled_guilds=TestServer.id,
     banner=None
 )
@@ -23,14 +24,10 @@ bot = lightbulb.BotApp(
 @lightbulb.command("embed", "test embed")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def test_command(ctx: lightbulb.Context):
-    embed = BaseEmbed(
+    embed = BaseEmbed().save()
 
-    )
-
-    await ctx.respond(
-        embed=embed,
-        components=[]
-    )
+    await ctx.respond(attachment=embed)
 
 
 
+bot.run()
