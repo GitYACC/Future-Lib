@@ -15,6 +15,7 @@ class EmbedConfig:
     foreground_color: tuple = (35, 39, 42)
     text_color: tuple = (163, 180, 191)
 
+
 class EmbedSize(Enum):
     SMALL = 250
     NORMAL = 500
@@ -22,15 +23,15 @@ class EmbedSize(Enum):
 
 
 class BaseEmbed:
-    def __init__(self, size: EmbedSize = EmbedSize.NORMAL, font: str = "../fonts/Typomoderno.ttf"):
+    def __init__(self, size: EmbedSize = EmbedSize.NORMAL, font: str = "../fonts/Typomoderno.ttf", font_pixel_size: int = 12):
         with console.status("[green italic]Embedding..."):
-           self._init_(size)
+           self._init_(size, font, font_pixel_size)
 
-    def _init_(self, size: EmbedSize, font: str):
+    def _init_(self, size: EmbedSize, font: str, font_pixel_size: int):
         self.dim = (1000, size)
         self.root = Image.new("RGB", self.dim, color=EmbedConfig.base_color)
         self.instructions = Queue(maxsize=-1)
-        self.font = ImageFont.load(font)
+        self.font = ImageFont.truetype(font, font_pixel_size)
         self.initialize_root()
 
     def initialize_root(self):
@@ -41,12 +42,12 @@ class BaseEmbed:
             fill=EmbedConfig.foreground_color
         )
 
-    def set_font(self, ttf: str):
+    def set_font(self, ttf: str, size: int):
         if not ttf.endswith(".ttf"):
             raise TypeError(f"invalid font file '{ttf}'")
 
         try:
-            self.font = ImageFont.load(ttf)
+            self.font = ImageFont.truetype(ttf, size)
         except:
             raise FileNotFoundError(f"could not find file '{ttf}'")
 
