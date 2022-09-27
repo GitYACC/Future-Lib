@@ -1,13 +1,8 @@
 import lightbulb
 import hikari
-from dataclasses import dataclass
-from future.discord import \
-    BaseEmbed,             \
-    BaseComponent,         \
-    ComponentType
+from future import *
 
 
-@dataclass
 class TestServer:
     client_secret = [
         "NzI0MDA", 
@@ -19,7 +14,7 @@ class TestServer:
         "VVsvbib", 
         "lTAacM"
     ]
-    id: int = 724002247360380979
+    id = 724002247360380979
 
 
 bot = lightbulb.BotApp(
@@ -33,16 +28,27 @@ bot = lightbulb.BotApp(
 @lightbulb.command("embed", "test embed")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def test_command(ctx: lightbulb.Context):
-    component_flags = {
-        "position": (10, 10),
-        "text": "Hello World"
-    }
-    embed = BaseEmbed()
+    embed = BaseEmbed(size=EmbedSize.LARGE, font_size=48)
     embed.add_component(
         BaseComponent(
             name="row0col0", 
             type=ComponentType.TEXT, 
-            **component_flags
+            **{
+                "position": (30, 30),
+                "text": "Hello World",
+                "text-color": (255, 255, 0, 0),
+                #"italicize": True
+            }
+        )
+    ).add_component(
+        BaseComponent(
+            name="image_conception",
+            type=ComponentType.IMAGE,
+            **{
+                "position": (30, 100),
+                "image": "../env/test.png",
+                "ratio": 50
+            }
         )
     )
     

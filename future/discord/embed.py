@@ -21,11 +21,11 @@ class EmbedSize(Enum):
 
 
 class BaseEmbed:
-    def __init__(self, size: EmbedSize = EmbedSize.NORMAL, font: typing.TextIO = "../fonts/Andale Mono.ttf", font_pixel_size: int = 12):
+    def __init__(self, size: EmbedSize = EmbedSize.NORMAL, font: typing.TextIO = "../fonts/Andale Mono.ttf", font_size: int = 36):
         self.dim = (1000, size.value)
         self.root = Image.new("RGB", self.dim, color=EmbedConfig.base_color)
-        self.instructions: typing.List[BaseComponent] = Queue(maxsize=-1)
-        self.font = ImageFont.truetype(font, font_pixel_size)
+        self.instructions = Queue(maxsize=-1)
+        self.font = ImageFont.truetype(font, font_size)
         self.children = {}
         self.initialize_root()
 
@@ -51,12 +51,29 @@ class BaseEmbed:
         return self
 
     def _process_commands(self):
+        self.instructions.put(ENDQ:=1)
         renderer = ImageDraw.Draw(self.root)
-        while command := self.instructions.get():
+        while (command := self.instructions.get()) != ENDQ:
+            self.children[command.name] = command
             if command.type == ComponentType.TEXT:
-                self.children[command.name] = command
-                renderer.multiline_textbbox(command.pos, command.text, font=self.font)
-                break
+                renderer.text(
+                    xy=command.pos, 
+                    text=command.text, 
+                    font=self.font, 
+                    fill=command.tcolor,
+                    features="ital" if command.italicize else None
+                )
+            elif command.type == ComponentType.IMAGE:
+                im = Image.open(command.image)
+                if command.ratio:
+                    div = command.ratio / 100
+                    w, h = int(im.width * div), int(im.height * div)
+                    self.root.paste(im.resize((w, h)), command.pos)
+                else:
+                    self.root.paste(im, command.pos)
+            elif command.type == ComponentType.PANEL:
+                #self.root.paste(Image.open(command.image), command.pos)
+                pass
         
 
     
