@@ -28,7 +28,12 @@ bot = lightbulb.BotApp(
 @lightbulb.command("embed", "test embed")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def test_command(ctx: lightbulb.Context):
-    embed = BaseEmbed(size=EmbedSize.LARGE, font_size=48)
+    embed = BaseEmbed(
+        size=EmbedSize.LARGE, 
+        font_size=48, 
+        banner=(255, 255, 0)
+    )
+
     embed.add_component(
         BaseComponent(
             name="row0col0", 
@@ -36,23 +41,24 @@ async def test_command(ctx: lightbulb.Context):
             **{
                 "position": (30, 30),
                 "text": "Hello World",
-                "text-color": (255, 255, 0, 0),
+                "text-color": (255, 255, 0),
                 #"italicize": True
             }
         )
     ).add_component(
         BaseComponent(
-            name="image_conception",
+            name="image",
             type=ComponentType.IMAGE,
             **{
                 "position": (30, 100),
-                "image": "../env/test.png",
-                "ratio": 50
+                "image": "./github-pic.png",
+                "ratio": 50,
+                "border-radius": 1
             }
         )
     )
     
-    await ctx.respond(attachment=embed.save(name="test", fp="../env"))
+    await ctx.respond(attachment=embed.save(name="test", fp="."))
 
 
 
