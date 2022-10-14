@@ -36,7 +36,7 @@ async def test_command(ctx: lightbulb.Context):
 
     embed.add_component(
         BaseComponent(
-            name="row0col0", 
+            name="text", 
             type=ComponentType.TEXT, 
             **{
                 "position": (30, 30),
@@ -56,7 +56,39 @@ async def test_command(ctx: lightbulb.Context):
                 "border-radius": 1
             }
         )
+    ).add_component(
+        BaseComponent(
+            name="html",
+            type=ComponentType.HTML,
+            **{
+                "string-html": "<h1>Hello World from html!</h1>",
+                "string-css": "h1 {color: yellow; background: blue;}",
+                "ratio": 50,
+                "position": (30, 200)
+            }
+        )
+    ).add_component(
+        BaseComponent(
+            name="panel",
+            type=ComponentType.PANEL,
+            **{
+                "position": (500, 35),
+                "background-color": (0, 255, 0),
+                "panel-size": (100, 100),
+            }
+        )
+    ).add_component(
+        BaseComponent(
+            name="text",
+            type=ComponentType.TEXT,
+            **{
+                "text": "Hello",
+                "relative-position": (10, 10),
+                "attached-to": embed.children["html"]
+            }
+        )
     )
+    
     
     await ctx.respond(attachment=embed.save(name="test", fp="."))
 
