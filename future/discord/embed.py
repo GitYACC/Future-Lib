@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum
-from queue import Queue
 import hikari
 import lightbulb
 import typing
@@ -175,7 +174,78 @@ class BaseEmbed:
         fname = name + (".png" if not name.endswith(".png") else "")
         self.root.save(fname, quality=95)
         return f"{fp}/{fname}"
+
+@dataclass
+class Grid:
+    name: str
+    width: int
+    height: int
+    component: BaseComponent
+    nodes: list
+        
+class GridEmbed(BaseEmbed):
+    def __init__(
+        self, 
+        size: EmbedSize = EmbedSize.NORMAL, 
+        font: typing.TextIO = "../fonts/Andale Mono.ttf", 
+        font_size: int = 36, 
+        fill: RGBA = EmbedConfig.foreground_color, 
+        banner: RGB = None, 
+        lining: bool = False,
+        grid_dim: tuple = (3, 3)
+    ):
+        super().__init__(size, font, font_size, fill, banner, lining)
+        self.grid = Grid(
+            name="top",
+            height=self.dim[1],
+            width=self.dim[0],
+            component=None,
+            nodes=[]
+        )
+        self._setter = self.grid
+
+        self.grid_dim = grid_dim
+        self._set_grid(self.grid, grid_dim[0], grid_dim[1])
+
+    def _set_grid(self, parent, width, height):
+        for i in range(width):
+            temp = Grid(
+                name="",
+                height=parent.height // height,
+                width=parent.width // width,
+                component=None,
+                nodes=[]
+            )
+            for j in range(height):
+                temp.nodes.append(Grid(
+                    name="",
+                    height=parent.height // height,
+                    width=parent.width // width,
+                    component=None,
+                    nodes=[]
+                ))
+            parent.nodes.append(temp)
+
+    def __getitem__(self, idx):
+        self._setter = self._setter.nodes[idx]
+        return self
+
+    def __setitem__(self, idx, comp: BaseComponent):
+        self._setter.nodes[idx].component = comp
+        self._setter = self.grid
+
+    def create_grid(self, index: tuple, grid_dim: tuple = (3, 3)):
+        # finish the rest of create_grid method to create grids in a grid box
+        temp = self.grid
+
+        for idx in index:
+            temp = temp.nodes[idx]
+
+    def __repr__(self):
+        return f"{self._setter}"
+
         
 
+        
 
 
