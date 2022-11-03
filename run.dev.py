@@ -84,7 +84,7 @@ async def test_command(ctx: lightbulb.Context):
             **{
                 "text": "Hello",
                 "relative-position": (10, 10),
-                "attached-to": embed.children["html"]
+                "attached-to": embed._children["html"]
             }
         )
     )
@@ -94,4 +94,10 @@ async def test_command(ctx: lightbulb.Context):
 
 
 
-bot.run()
+#bot.run()
+
+class T:
+    pass
+
+s = T()
+print(s[0])

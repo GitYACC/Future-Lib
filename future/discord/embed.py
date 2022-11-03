@@ -2,20 +2,37 @@ from dataclasses import dataclass
 from enum import Enum
 import hikari
 import lightbulb
-import typing
+from typing import Any, Tuple, TextIO, List
 from PIL import Image, ImageFont, ImageDraw, ImageFilter
 from .component import BaseComponent, ComponentType
 from html2image import Html2Image
 
-RGB = typing.Tuple[int, int, int]
-RGBA = typing.Tuple[int, int, int, int]
+RGB = Tuple[int, int, int]
+RGBA = Tuple[int, int, int, int]
 
 @dataclass
-class EmbedConfig:
-    base_color: RGBA = (55, 57, 62, 1)
-    base_color_transparent: RGBA = (55, 57, 62, 0)
-    foreground_color: RGB = (35, 39, 42)
+class NTuple:
+    first: Any
+    second: Any
 
+    def __getitem__(self, idx):
+        if idx == 0:
+            return self.first
+        return self.second
+
+    def __setitem__(self, idx, val):
+        if idx == 0:
+            self.first = val
+        else:
+            self.second = val
+
+EmbedConfig = {
+    "base_color": (55, 57, 62, 1),
+    "base_color_transparent": (55, 57, 62, 0),
+    "foreground_color": (35, 39, 42),
+    "foreground_color_transparent": (35, 39, 42, 0),
+    "base_font": "../fonts/Andale Mono.ttf"
+}
 
 class EmbedSize(Enum):
     SMALL = 250
@@ -26,28 +43,52 @@ class EmbedSize(Enum):
 class BaseEmbed:
     def __init__(self, 
         size: EmbedSize = EmbedSize.NORMAL, 
-        font: typing.TextIO = "../fonts/Andale Mono.ttf", 
+        font: TextIO = EmbedConfig["base_font"], 
         font_size: int = 36,
-        fill: RGBA = EmbedConfig.foreground_color,
+        fill: RGBA = EmbedConfig["foreground_color"],
         banner: RGB = None,
         lining: bool = False
         # side_banner: RGB = None,
     ):
         # flags
-        self.dim = (1000, size.value)
-        self.font = ImageFont.truetype(font, font_size)
-        self.banner = banner
-        self.lining = lining
-        self.back_fill = EmbedConfig.base_color_transparent
-        self.front_fill = fill
+        self._dim: NTuple = NTuple(1000, size.value)
+        self._font = ImageFont.truetype(font, font_size)
+        self._banner = banner
+        self._lining = lining
+        self._back_fill = EmbedConfig["base_color_transparent"]
+        self._front_fill = fill
 
         self.root = Image.new("RGBA", self.dim, color=self.back_fill)
-        self.children = {}
+        self._children = {}
         self.initialize_root()
+
+    @property
+    def dim(self) -> NTuple: return self._dim
+
+    @property
+    def font(self): self._font
+
+    @property
+    def hasBanner(self): return self._banner is not None
+
+    @property
+    def banner(self) -> RGB: return self._banner
+
+    @property
+    def hasLining(self): return self._lining == True
+
+    @property
+    def backgroundColor(self): return self._back_fill
+
+    @property
+    def foregroundColor(self): return self._front_fill
+
+    @property
+    def children(self) -> dict: return self._children
 
     def _init_rounded(self, render, pad=3, fill=(0, 0, 0), radius=25):
         render.rounded_rectangle(
-            (pad, pad, self.dim[0] - pad, self.dim[1] - pad),
+            (pad, pad, self.dim.first - pad, self.dim.second - pad),
             radius=radius,
             fill=fill
         )
@@ -77,13 +118,13 @@ class BaseEmbed:
         )
 
     def set_font(self, ttf: str, size: int):
-        if not ttf.endswith(".ttf"):
+        if not ttf.strip().endswith(".ttf"):
             raise TypeError(f"invalid font file '{ttf}'")
 
         try:
             self.font = ImageFont.truetype(ttf, size)
         except:
-            raise FileNotFoundError(f"could not find file '{ttf}'")
+            raise FileNotFoundError(f"could not find ttf file '{ttf}'")
 
     def _get_pos(self, command: BaseComponent):
         if command.repos and command.attached_to:
@@ -125,7 +166,7 @@ class BaseEmbed:
 
     def _process_command(self, command: BaseComponent):
         renderer = ImageDraw.Draw(self.root)
-        self.children[command.name] = command
+        self._children[command.name] = command
         if command.type == ComponentType.TEXT:
             pos = self._get_pos(command)
                 
@@ -165,84 +206,63 @@ class BaseEmbed:
                     css_file=command.css or []
                 )
 
-            im = Image.open(f"screenshot.png").crop((0, 0, self.dim[0], self.dim[1]))
+            im = Image.open(f"screenshot.png").crop((0, 0, self.dim.first, self.dim.second))
 
             im = self.ImageProcessing.ratio(command, im)
             self.root.paste(im, pos)
     
-    def save(self, name: str, fp: typing.TextIO) -> str:
+    def save(self, name: str, fp: TextIO) -> str:
         fname = name + (".png" if not name.endswith(".png") else "")
         self.root.save(fname, quality=95)
         return f"{fp}/{fname}"
 
-@dataclass
-class Grid:
-    name: str
-    width: int
-    height: int
-    component: BaseComponent
-    nodes: list
+class Cell:
+    component: BaseComponent   = None
+    placement: Tuple[int, int] = None
+    dimension: Tuple[int, int] = None
+    children : List[Any]       = []
+
+    def set(
+        self, *,
+        component: BaseComponent=None, 
+        placement: Tuple[int, int]=None, 
+        dimension: Tuple[int, int]=None, 
+        children: List[Any]=None
+    ):
+        if component is not None:
+            self.component = component
         
+        if placement is not None:
+            self.placement = placement
+
+        if dimension is not None:
+            self.dimension = dimension
+
+        if children is not None:
+            self.children = children
+
+    def add_child(self, cell):
+        self.children.append(cell)
+        return self
+
+    def __mul__(self, const):
+        return [self] * const
+
+
 class GridEmbed(BaseEmbed):
     def __init__(
         self, 
         size: EmbedSize = EmbedSize.NORMAL, 
-        font: typing.TextIO = "../fonts/Andale Mono.ttf", 
+        font: TextIO = EmbedConfig["base_font"], 
         font_size: int = 36, 
-        fill: RGBA = EmbedConfig.foreground_color, 
+        fill: RGBA = EmbedConfig["foreground_color"], 
         banner: RGB = None, 
         lining: bool = False,
-        grid_dim: tuple = (3, 3)
+        grid_dim: NTuple = NTuple(3, 3)
     ):
         super().__init__(size, font, font_size, fill, banner, lining)
-        self.grid = Grid(
-            name="top",
-            height=self.dim[1],
-            width=self.dim[0],
-            component=None,
-            nodes=[]
-        )
-        self._setter = self.grid
-
-        self.grid_dim = grid_dim
-        self._set_grid(self.grid, grid_dim[0], grid_dim[1])
-
-    def _set_grid(self, parent, width, height):
-        for i in range(width):
-            temp = Grid(
-                name="",
-                height=parent.height // height,
-                width=parent.width // width,
-                component=None,
-                nodes=[]
-            )
-            for j in range(height):
-                temp.nodes.append(Grid(
-                    name="",
-                    height=parent.height // height,
-                    width=parent.width // width,
-                    component=None,
-                    nodes=[]
-                ))
-            parent.nodes.append(temp)
-
-    def __getitem__(self, idx):
-        self._setter = self._setter.nodes[idx]
-        return self
-
-    def __setitem__(self, idx, comp: BaseComponent):
-        self._setter.nodes[idx].component = comp
-        self._setter = self.grid
-
-    def create_grid(self, index: tuple, grid_dim: tuple = (3, 3)):
-        # finish the rest of create_grid method to create grids in a grid box
-        temp = self.grid
-
-        for idx in index:
-            temp = temp.nodes[idx]
-
-    def __repr__(self):
-        return f"{self._setter}"
+        self.grid: Cell = (Cell() * grid_dim.first) * grid_dim.second
+        
 
         
 
