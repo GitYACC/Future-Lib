@@ -21,7 +21,7 @@ class BaseComponent:
             attrs.get("repos") or
             attrs.get("relative-position")
         )
-        self.attached_to: self.__class__ = attrs.get("attached-to")
+        self.attached_to = attrs.get("attached-to")
         # self.focus: bool = attrs.get("focus")
 
         # Partial Flags (excludes Text)

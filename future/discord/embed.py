@@ -10,22 +10,6 @@ from html2image import Html2Image
 RGB = Tuple[int, int, int]
 RGBA = Tuple[int, int, int, int]
 
-@dataclass
-class NTuple:
-    first: Any
-    second: Any
-
-    def __getitem__(self, idx):
-        if idx == 0:
-            return self.first
-        return self.second
-
-    def __setitem__(self, idx, val):
-        if idx == 0:
-            self.first = val
-        else:
-            self.second = val
-
 EmbedConfig = {
     "base_color": (55, 57, 62, 1),
     "base_color_transparent": (55, 57, 62, 0),
@@ -51,22 +35,43 @@ class BaseEmbed:
         # side_banner: RGB = None,
     ):
         # flags
-        self._dim: NTuple = NTuple(1000, size.value)
+        self._dim = 1000, size.value
         self._font = ImageFont.truetype(font, font_size)
         self._banner = banner
         self._lining = lining
         self._back_fill = EmbedConfig["base_color_transparent"]
         self._front_fill = fill
 
-        self.root = Image.new("RGBA", self.dim, color=self.back_fill)
+        self.root = Image.new("RGBA", self.dim, color=self._back_fill)
         self._children = {}
         self.initialize_root()
 
     @property
-    def dim(self) -> NTuple: return self._dim
+    def dim(self): return self._dim
 
     @property
-    def font(self): self._font
+    def center(self): return self.dim[0] // 2, self.dim[1] // 2
+
+    def center_with(self, component: BaseComponent):
+        cen = list(self.center)
+        if component.type == ComponentType.TEXT:
+            size = self.font.getsize(component.text)
+            cen[0] -= size[0] // 2
+            cen[1] -= size[1] // 2
+        elif component.type == ComponentType.IMAGE:
+            bbox = self.ImageProcessing.ratio(
+                component, Image.open(component.image)
+            ).getbbox()
+            cen[0] -= (bbox[2] - bbox[0]) // 2
+            cen[1] -= (bbox[3] - bbox[1]) // 2
+        elif component.type == ComponentType.PANEL:
+            size = component.psize
+            cen[0] -= size[0] // 2
+            cen[1] -= size[1] // 2
+        return tuple(cen)
+
+    @property
+    def font(self): return self._font
 
     @property
     def hasBanner(self): return self._banner is not None
@@ -88,7 +93,7 @@ class BaseEmbed:
 
     def _init_rounded(self, render, pad=3, fill=(0, 0, 0), radius=25):
         render.rounded_rectangle(
-            (pad, pad, self.dim.first - pad, self.dim.second - pad),
+            (pad, pad, self.dim[0] - pad, self.dim[1] - pad),
             radius=radius,
             fill=fill
         )
@@ -104,17 +109,17 @@ class BaseEmbed:
         draw = ImageDraw.Draw(self.root)
         offset_top = 3
 
-        if self.lining:
+        if self.hasLining:
             self._init_rounded(draw, pad=1)
         
-        if self.banner:
-            self._init_rounded(draw, pad=3, fill=self.banner)
+        if self.hasBanner:
+            self._init_rounded(draw, pad=3, fill=self._banner)
             offset_top = 15
 
         draw.rounded_rectangle(
             (3, offset_top, self.dim[0] - 3, self.dim[1] - 3), 
             radius=25, 
-            fill=self.front_fill
+            fill=self._front_fill
         )
 
     def set_font(self, ttf: str, size: int):
@@ -139,7 +144,7 @@ class BaseEmbed:
 
     class ImageProcessing:
         @staticmethod
-        def ratio(command: BaseComponent, im: Image, root = None):
+        def ratio(command: BaseComponent, im: Image) -> Image:
             if command.ratio:
                 div = command.ratio / 100
                 w, h = int(im.width * div), int(im.height * div)
@@ -148,11 +153,11 @@ class BaseEmbed:
                 return im
 
         @staticmethod
-        def border_radius(root, command: BaseComponent, im: Image):
+        def border_radius(root, command: BaseComponent, im: Image) -> Image:
             if command.bradius:
                 blur_radius = 0
                 offset = 4
-                back_color = Image.new(im.mode, im.size, root.front_fill)
+                back_color = Image.new(im.mode, im.size, root._front_fill)
                 offset = blur_radius * 2 + offset
                 mask = Image.new("L", im.size, 0)
                 draw = ImageDraw.Draw(mask)
@@ -173,7 +178,7 @@ class BaseEmbed:
             renderer.text(
                 xy=pos, 
                 text=command.text, 
-                font=self.font, 
+                font=self._font, 
                 fill=command.tcolor,
                 features="ital" if command.italicize else None
             )
@@ -185,7 +190,7 @@ class BaseEmbed:
             self.root.paste(im, pos)
         elif command.type == ComponentType.PANEL:
             pos = self._get_pos(command)
-            im = Image.new("RGB", command.psize, color=self.front_fill)
+            im = Image.new("RGB", command.psize, color=self._front_fill)
             render = ImageDraw.Draw(im)
             self._panel_rounded(render, dim=im.size, fill=command.bgcolor)
             self.root.paste(im, pos)
@@ -206,12 +211,12 @@ class BaseEmbed:
                     css_file=command.css or []
                 )
 
-            im = Image.open(f"screenshot.png").crop((0, 0, self.dim.first, self.dim.second))
+            im = Image.open(f"screenshot.png").crop((0, 0, self.dim[0], self.dim[1]))
 
             im = self.ImageProcessing.ratio(command, im)
             self.root.paste(im, pos)
     
-    def save(self, name: str, fp: TextIO) -> str:
+    def save(self, name: str, fp: TextIO = ".") -> str:
         fname = name + (".png" if not name.endswith(".png") else "")
         self.root.save(fname, quality=95)
         return f"{fp}/{fname}"
@@ -258,10 +263,10 @@ class GridEmbed(BaseEmbed):
         fill: RGBA = EmbedConfig["foreground_color"], 
         banner: RGB = None, 
         lining: bool = False,
-        grid_dim: NTuple = NTuple(3, 3)
+        grid_dim = (3, 3)
     ):
         super().__init__(size, font, font_size, fill, banner, lining)
-        self.grid: Cell = (Cell() * grid_dim.first) * grid_dim.second
+        self.grid: Cell = (Cell() * grid_dim[0]) * grid_dim[1]
         
 
         

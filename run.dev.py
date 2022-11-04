@@ -90,14 +90,8 @@ async def test_command(ctx: lightbulb.Context):
     )
     
     
-    await ctx.respond(attachment=embed.save(name="test", fp="."))
+    await ctx.respond(attachment=embed.save(name="test"))
 
 
 
-#bot.run()
-
-class T:
-    pass
-
-s = T()
-print(s[0])
+bot.run()
